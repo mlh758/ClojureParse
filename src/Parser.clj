@@ -14,9 +14,9 @@
 (defn valid-operator? [operator]
   (some #(= % operator) ["+"]))
 (defn error []
-  println "Reject")
+  (println "Reject"))
 (defn accept []
-  println "Accept")
+  (println "Accept"))
 (defn id-or-numchar? [lexeme]
   (or
     (number-char? lexeme)
@@ -28,7 +28,7 @@
     (if (= paren-depth 0)
       #(accept) ;then
       #(error)) ;else
-    #(validate-term lexemes paren-depth)) ;outer else
+    #(validate-factor lexemes paren-depth)) ;outer else
   )
 
 (defn validate-term [lexemes paren-depth]
@@ -36,21 +36,21 @@
     (let [[head & tail] lexemes]
       (cond
         (valid-operator? head) #(validate-factor tail paren-depth)
-        (= head ")") #(validate-expression tail (dec paren-depth))
-        :else #(validate-factor lexemes paren-depth)))
-    #(error)))
+        (= head ")") #(validate-term tail (dec paren-depth))
+        :else #(error)))
+    #(validate-expression lexemes paren-depth)))
 
 (defn validate-factor [lexemes paren-depth]
   (if-not (empty? lexemes)
     (let [[head & tail] lexemes]
       (cond
-        (id-or-numchar? head) #(validate-expression tail paren-depth)
-        (= head "(") #(validate-expression tail (inc paren-depth))
+        (id-or-numchar? head) #(validate-term tail paren-depth)
+        (= head "(") #(validate-factor tail (inc paren-depth))
         :else #(error)))
     #(error)))
 
 (defn parse [input]
-  (println (trampoline validate-expression input 0)))
+  (trampoline validate-expression input 0))
 
 (defn parse-file [filename]
   (let [lines (read-lines filename)]
