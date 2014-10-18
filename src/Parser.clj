@@ -7,7 +7,6 @@
     (doall (map split-line (line-seq reader)))))
 
 
-
 (defn id? [check]
   (not (string/blank? (re-matches #"[A-Z]" check))))
 (defn number-char? [check]
@@ -18,43 +17,40 @@
   println "Reject")
 (defn accept []
   println "Accept")
+(defn id-or-numchar? [lexeme]
+  (or
+    (number-char? lexeme)
+    (id? lexeme)))
 
 (declare validate-factor validate-expression validate-term)
-(defn validate-expression [lexemes state]
+(defn validate-expression [lexemes paren-depth]
   (if (empty? lexemes)
-    (if (= (:paren-depth state) 0)
+    (if (= paren-depth 0)
       #(accept) ;then
       #(error)) ;else
-    #(validate-term lexemes (assoc state :from "expression"))) ;outer else
+    #(validate-term lexemes paren-depth)) ;outer else
   )
 
-(defn validate-term [lexemes state]
-  (let [from (:from state)]
-    (if (= from "factor")
-      (if (empty? lexemes)
-        #(validate-expression lexemes (assoc state :from "term"))
-        (let [lexeme (first lexemes)]
-          (cond
-            (valid-operator? lexeme) #(validate-factor (rest lexemes) (assoc state :from "term"))
-            (= lexeme ")") #(validate-factor lexemes (assoc state :from "term"))
-            :else #(error))))
-      #(validate-factor lexemes (assoc state :from "term")))))
-
-(defn validate-factor [lexemes state]
-  (if (empty? lexemes)
-    #(error)
-    (let [lexeme (first lexemes) paren-depth (:paren-depth state)]
+(defn validate-term [lexemes paren-depth]
+  (if-not (empty? lexemes)
+    (let [[head & tail] lexemes]
       (cond
-        (id? lexeme) #(validate-term (rest lexemes) (assoc state :paren-depth paren-depth :from "factor"))
-        (number-char? lexeme) #(validate-term (rest lexemes) (assoc state :paren-depth paren-depth :from "factor"))
-        (= lexeme "(") #(validate-expression (rest lexemes) (assoc state :paren-depth (inc paren-depth) :from "factor"))
-        (= lexeme ")") #(validate-term (rest lexemes) (assoc state :paren-depth (dec paren-depth) :from "factor"))
-        :else #(error)))))
+        (valid-operator? head) #(validate-factor tail paren-depth)
+        (= head ")") #(validate-expression tail (dec paren-depth))
+        :else #(validate-factor lexemes paren-depth)))
+    #(error)))
 
+(defn validate-factor [lexemes paren-depth]
+  (if-not (empty? lexemes)
+    (let [[head & tail] lexemes]
+      (cond
+        (id-or-numchar? head) #(validate-expression tail paren-depth)
+        (= head "(") #(validate-expression tail (inc paren-depth))
+        :else #(error)))
+    #(error)))
 
 (defn parse [input]
-  (let [state {:paren-depth 0 :from nil} ]
-    (println (trampoline validate-expression input state))))
+  (println (trampoline validate-expression input 0)))
 
 (defn parse-file [filename]
   (let [lines (read-lines filename)]
