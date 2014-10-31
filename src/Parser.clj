@@ -8,13 +8,13 @@
 
 
 (defn id? [check]
-  (not (string/blank? (re-matches #"[A-Z]" check))))
+  (not (string/blank? (re-matches #"[A-Za-z]" check))))
 (defn number-char? [check]
   (not (string/blank? (re-matches #"[0-9]" check))))
 (defn valid-operator? [operator]
-  (some #(= % operator) ["+"]))
-(defn error []
-  (println "Reject"))
+  (some #(= % operator) ["+" "-" "*" "/"]))
+(defn error [problem location]
+  (println "Reject, invalid" problem " at " (if (nil? location) "end" location)))
 (defn accept []
   (println "Accept"))
 (defn id-or-numchar? [lexeme]
@@ -27,7 +27,7 @@
   (if (empty? lexemes)
     (if (= paren-depth 0)
       #(accept) ;then
-      #(error)) ;else
+      #(error "expression" lexemes)) ;else
     #(validate-factor lexemes paren-depth)) ;outer else
   )
 
@@ -37,7 +37,7 @@
       (cond
         (valid-operator? head) #(validate-factor tail paren-depth)
         (= head ")") #(validate-term tail (dec paren-depth))
-        :else #(error)))
+        :else #(error "term" lexemes)))
     #(validate-expression lexemes paren-depth)))
 
 (defn validate-factor [lexemes paren-depth]
@@ -46,8 +46,8 @@
       (cond
         (id-or-numchar? head) #(validate-term tail paren-depth)
         (= head "(") #(validate-factor tail (inc paren-depth))
-        :else #(error)))
-    #(error)))
+        :else #(error "factor" lexemes)))
+    #(error "factor" lexemes)))
 
 (defn parse [input]
   (trampoline validate-expression input 0))
